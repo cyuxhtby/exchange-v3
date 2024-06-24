@@ -1,7 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../contracts/YourContract.sol";
+// import "../contracts/YourContract.sol";
+import "../contracts/MockToken.sol";
+import "../contracts/Pool.sol"; 
 import "./DeployHelpers.s.sol";
 
 contract DeployScript is ScaffoldETHDeploy {
@@ -24,7 +26,22 @@ contract DeployScript is ScaffoldETHDeploy {
             )
         );
 
-        vm.stopBroadcast();
+        MockToken mockToken = 
+            new MockToken("Token1", "TKN1");
+        console.logString(
+            string.concat(
+                "MockToken deployed at: ", vm.toString(address(mockToken))
+            )
+        );
+
+        Pool pool = 
+            new Pool();
+        console.logString(
+            string.concat(
+                "Pool deployed at: ", vm.toString(address(pool))
+            )
+        );
+         vm.stopBroadcast();
 
         /**
          * This function generates the file containing the contracts Abi definitions.

@@ -8,3 +8,6 @@
 [submodule "packages/foundry/lib/solidity-bytes-utils"]
 	path = packages/foundry/lib/solidity-bytes-utils
 	url = https://github.com/gnsps/solidity-bytes-utils
+[submodule "packages/foundry/lib/valantis-core"]
+	path = packages/foundry/lib/valantis-core
+	url = https://github.com/ValantisLabs/valantis-core
