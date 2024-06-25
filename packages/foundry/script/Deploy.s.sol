@@ -1,12 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.19 <0.9.0;
 
-import "../contracts/Pool.sol";
 import "../contracts/MockTokens.sol";
+import "../contracts/ALM.sol";
+import "../contracts/Vault.sol";
+import "../contracts/Pool.sol";
+import "../contracts/PoolFactory.sol";
 import "./DeployHelpers.s.sol";
 
 contract Deploy is ScaffoldETHDeploy {
     error InvalidPrivateKey(string);
+
+    MockTokens public mockTokens;
+    PoolFactory public poolFactory;
+    Vault public vault;
+
+    struct PoolInfo {
+        address pool;
+        address alm;
+    }
+
+    PoolInfo[] public deployedPools;
 
     function run() external {
         uint256 deployerPrivateKey = setupLocalhostEnv();
@@ -16,46 +30,63 @@ contract Deploy is ScaffoldETHDeploy {
             );
         }
 
+        address deployer = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
-         MockTokens mockTokens = new MockTokens();
+        deployContracts(deployer);
 
-        address deployer = vm.addr(deployerPrivateKey);
-        uint256 initialMint = 1000000 * 10**18;
-        
+        vm.stopBroadcast();
+
+        exportDeployments();
+    }
+
+    function deployContracts(address deployer) internal {
+        mockTokens = new MockTokens();
+        console.log("MockTokens deployed at:", address(mockTokens));
+
         string[8] memory symbols = ["DAI", "USDC", "USDT", "WETH", "WBTC", "UNI", "LINK", "AAVE"];
+        uint256 initialMint = 1000000 * 10**18; // 1 mill
         for(uint i = 0; i < symbols.length; i++) {
             mockTokens.mint(symbols[i], deployer, initialMint);
-            console.logString(string.concat(
-                symbols[i], " deployed at: ", 
-                vm.toString(mockTokens.getTokenAddress(symbols[i]))
-            ));
+            console.log(symbols[i], "minted, address:", mockTokens.getTokenAddress(symbols[i]));
         }
-        console.logString(string.concat("MockTokens deployed at: ", vm.toString(address(mockTokens))));
+
+        poolFactory = new PoolFactory();
+        console.log("PoolFactory deployed at:", address(poolFactory));
+
+        vault = new Vault();
+        console.log("Vault deployed at:", address(vault));
+
+        deployPoolAndALM("DAI", "USDC");
+        deployPoolAndALM("WETH", "USDC");
+        deployPoolAndALM("WBTC", "USDT");
+    }
+
+    function deployPoolAndALM(string memory token0Symbol, string memory token1Symbol) internal {
+        address token0 = mockTokens.getTokenAddress(token0Symbol);
+        address token1 = mockTokens.getTokenAddress(token1Symbol);
 
         SovereignPoolConstructorArgs memory args = SovereignPoolConstructorArgs({
-            token0: 0x68B1D87F95878fE05B998F19b66F4baba5De1aed,
-            token1: 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c,
-            sovereignVault: address(0),
-            verifierModule: address(0),
+            token0: token0,
+            token1: token1,
+            sovereignVault: address(vault),
+            verifierModule: address(this),
             protocolFactory: address(this),
             poolManager: address(this),
             isToken0Rebase: false,
             isToken1Rebase: false,
             token0AbsErrorTolerance: 0,
             token1AbsErrorTolerance: 0,
-            defaultSwapFeeBips: 0
+            defaultSwapFeeBips: 30 // 0.3% fee
         });
 
-        Pool pool = new Pool(args);
-        console.logString(
-            string.concat(
-                "Pool deployed at: ", vm.toString(address(pool))
-            )
-        );
+        bytes memory constructorArgs = abi.encode(args);
+        address pool = poolFactory.deploy(bytes32(0), constructorArgs);
+        console.log(string.concat(token0Symbol, "-", token1Symbol, " Pool deployed at: "), pool);
 
-        vm.stopBroadcast();
+        ALM alm = new ALM(pool, address(vault));
+        console.log(string.concat(token0Symbol, "-", token1Symbol, " ALM deployed at: "), address(alm));
 
-        exportDeployments();
+        deployedPools.push(PoolInfo(pool, address(alm)));
     }
 }

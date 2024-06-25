@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     MockTokens: {
-      address: "0x1291be112d480055dafd8a610b7d1e203891c274",
+      address: "0xd0141e899a65c95a556fe2b27e5982a6de7fdd7a",
       abi: [
         {
           type: "constructor",
@@ -137,75 +137,70 @@ const deployedContracts = {
         transferFrom: "lib/valantis-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
       },
     },
-    Pool: {
-      address: "0xfd471836031dc5108809d173a067e8486b9047a3",
+    PoolFactory: {
+      address: "0xffa7ca1aeeebbc30c874d32c7e22f052bbea0429",
       abi: [
         {
-          type: "constructor",
+          type: "function",
+          name: "deploy",
           inputs: [
             {
-              name: "args",
-              type: "tuple",
-              internalType: "struct SovereignPoolConstructorArgs",
-              components: [
-                {
-                  name: "token0",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "token1",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "protocolFactory",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "poolManager",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "sovereignVault",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "verifierModule",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "isToken0Rebase",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "isToken1Rebase",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "token0AbsErrorTolerance",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "token1AbsErrorTolerance",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "defaultSwapFeeBips",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+            {
+              name: "_constructorArgs",
+              type: "bytes",
+              internalType: "bytes",
             },
           ],
+          outputs: [
+            {
+              name: "deployment",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "nonce",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+      ],
+      inheritedFunctions: {
+        deploy: "lib/valantis-core/src/protocol-factory/interfaces/IPoolDeployer.sol",
+      },
+    },
+    Vault: {
+      address: "0x3aade2dcd2df6a8cac689ee797591b2913658659",
+      abi: [
+        {
+          type: "function",
+          name: "addPoolTokens",
+          inputs: [
+            {
+              name: "_pool",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          outputs: [],
           stateMutability: "nonpayable",
         },
         {
@@ -226,60 +221,298 @@ const deployedContracts = {
           name: "claimPoolManagerFees",
           inputs: [
             {
-              name: "_feeProtocol0Bips",
+              name: "_feePoolManager0",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "_feeProtocol1Bips",
+              name: "_feePoolManager1",
               type: "uint256",
               internalType: "uint256",
             },
           ],
-          outputs: [
-            {
-              name: "feePoolManager0Received",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "feePoolManager1Received",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
+          outputs: [],
           stateMutability: "nonpayable",
         },
         {
           type: "function",
-          name: "claimProtocolFees",
-          inputs: [],
-          outputs: [
+          name: "deposit",
+          inputs: [
             {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
+              name: "_pool",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "",
+              name: "_token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
+          outputs: [],
           stateMutability: "nonpayable",
         },
         {
           type: "function",
-          name: "defaultSwapFeeBips",
-          inputs: [],
+          name: "executeMultiHopSwap",
+          inputs: [
+            {
+              name: "path",
+              type: "address[]",
+              internalType: "address[]",
+            },
+            {
+              name: "amounts",
+              type: "uint256[]",
+              internalType: "uint256[]",
+            },
+            {
+              name: "recipient",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "getReservesForPool",
+          inputs: [
+            {
+              name: "_pool",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
           outputs: [
             {
               name: "",
-              type: "uint256",
-              internalType: "uint256",
+              type: "uint256[]",
+              internalType: "uint256[]",
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getTokensForPool",
+          inputs: [
+            {
+              name: "_pool",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "quoteToRecipient",
+          inputs: [
+            {
+              name: "_isZeroToOne",
+              type: "bool",
+              internalType: "bool",
+            },
+            {
+              name: "_amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setALM",
+          inputs: [
+            {
+              name: "_alm",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "tokenList",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "updateReserves",
+          inputs: [
+            {
+              name: "_pool",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+            {
+              name: "_amounts",
+              type: "uint256[]",
+              internalType: "uint256[]",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "verifyPath",
+          inputs: [
+            {
+              name: "path",
+              type: "address[]",
+              internalType: "address[]",
+            },
+            {
+              name: "amounts",
+              type: "uint256[]",
+              internalType: "uint256[]",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "withdraw",
+          inputs: [
+            {
+              name: "_pool",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "error",
+          name: "SovereignVault__addPoolTokens_tokensAlreadySet",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__claimPoolManagerFees_onlyPool",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__getReservesForPool_invalidPool",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__multiHopSwap_invalidPath",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__quoteToRecipient_onlyALM",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__updateReserves_arrayLengthMismatch",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__verifyPath_arrayLengthMismatch",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SovereignVault__withdraw_insufficientReserves",
+          inputs: [],
+        },
+      ],
+      inheritedFunctions: {
+        claimPoolManagerFees: "lib/valantis-core/src/pools/interfaces/ISovereignVaultMinimal.sol",
+        getReservesForPool: "lib/valantis-core/src/pools/interfaces/ISovereignVaultMinimal.sol",
+        getTokensForPool: "lib/valantis-core/src/pools/interfaces/ISovereignVaultMinimal.sol",
+      },
+    },
+    ALM: {
+      address: "0x38a024c0b412b9d1db8bc398140d00f5af3093d4",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "_pool",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "_vault",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -296,17 +529,7 @@ const deployedContracts = {
               internalType: "uint256",
             },
             {
-              name: "_sender",
-              type: "address",
-              internalType: "address",
-            },
-            {
               name: "_verificationContext",
-              type: "bytes",
-              internalType: "bytes",
-            },
-            {
-              name: "_depositData",
               type: "bytes",
               internalType: "bytes",
             },
@@ -327,7 +550,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "feePoolManager0",
+          name: "fee0",
           inputs: [],
           outputs: [
             {
@@ -340,7 +563,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "feePoolManager1",
+          name: "fee1",
           inputs: [],
           outputs: [
             {
@@ -353,46 +576,93 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "feeProtocol0",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "feeProtocol1",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "flashLoan",
+          name: "getLiquidityQuote",
           inputs: [
             {
-              name: "_isTokenZero",
-              type: "bool",
-              internalType: "bool",
+              name: "_almLiquidityQuotePoolInput",
+              type: "tuple",
+              internalType: "struct ALMLiquidityQuoteInput",
+              components: [
+                {
+                  name: "isZeroToOne",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "amountInMinusFee",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "feeInBips",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "sender",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "recipient",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "tokenOutSwap",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
             },
             {
-              name: "_receiver",
-              type: "address",
-              internalType: "contract IFlashBorrower",
+              name: "",
+              type: "bytes",
+              internalType: "bytes",
             },
             {
-              name: "_amount",
+              name: "",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct ALMLiquidityQuote",
+              components: [
+                {
+                  name: "isCallbackOnSwap",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "amountOut",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "amountInFilled",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "onDepositLiquidityCallback",
+          inputs: [
+            {
+              name: "_amount0",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "_amount1",
               type: "uint256",
               internalType: "uint256",
             },
@@ -407,202 +677,20 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "gauge",
-          inputs: [],
-          outputs: [
+          name: "onSwapCallback",
+          inputs: [
             {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPoolManagerFees",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getReserves",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getTokens",
-          inputs: [],
-          outputs: [
-            {
-              name: "tokens",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isLocked",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
+              name: "_isZeroToOne",
               type: "bool",
               internalType: "bool",
             },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isRebaseTokenPool",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isToken0Rebase",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isToken1Rebase",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "poolManager",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "poolManagerFeeBips",
-          inputs: [],
-          outputs: [
             {
               name: "",
               type: "uint256",
               internalType: "uint256",
             },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "protocolFactory",
-          inputs: [],
-          outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "setALM",
-          inputs: [
-            {
-              name: "_alm",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "setGauge",
-          inputs: [
-            {
-              name: "_gauge",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "setPoolManager",
-          inputs: [
-            {
-              name: "_manager",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "setPoolManagerFeeBips",
-          inputs: [
-            {
-              name: "_poolManagerFeeBips",
               type: "uint256",
               internalType: "uint256",
             },
@@ -612,33 +700,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setSovereignOracle",
-          inputs: [
-            {
-              name: "sovereignOracle",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "setSwapFeeModule",
-          inputs: [
-            {
-              name: "swapFeeModule_",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "sovereignOracleModule",
+          name: "pool",
           inputs: [],
           outputs: [
             {
@@ -651,186 +713,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "sovereignVault",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "swap",
-          inputs: [
-            {
-              name: "_swapParams",
-              type: "tuple",
-              internalType: "struct SovereignPoolSwapParams",
-              components: [
-                {
-                  name: "isSwapCallback",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "isZeroToOne",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "amountIn",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "amountOutMin",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "recipient",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "swapTokenOut",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "swapContext",
-                  type: "tuple",
-                  internalType: "struct SovereignPoolSwapContextData",
-                  components: [
-                    {
-                      name: "externalContext",
-                      type: "bytes",
-                      internalType: "bytes",
-                    },
-                    {
-                      name: "verifierContext",
-                      type: "bytes",
-                      internalType: "bytes",
-                    },
-                    {
-                      name: "swapCallbackContext",
-                      type: "bytes",
-                      internalType: "bytes",
-                    },
-                    {
-                      name: "swapFeeModuleContext",
-                      type: "bytes",
-                      internalType: "bytes",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-          outputs: [
-            {
-              name: "amountInUsed",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "amountOut",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "swapFeeModule",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "swapFeeModuleUpdateTimestamp",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "token0",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "token0AbsErrorTolerance",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "token1",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "token1AbsErrorTolerance",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "verifierModule",
+          name: "vault",
           inputs: [],
           outputs: [
             {
@@ -856,9 +739,14 @@ const deployedContracts = {
               internalType: "uint256",
             },
             {
-              name: "_sender",
-              type: "address",
-              internalType: "address",
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
             {
               name: "_recipient",
@@ -876,484 +764,37 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "ALMSet",
+          name: "LogSwapCallback",
           inputs: [
-            {
-              name: "alm",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "DepositLiquidity",
-          inputs: [
-            {
-              name: "amount0",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "amount1",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "Flashloan",
-          inputs: [
-            {
-              name: "initiator",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "receiver",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "amount",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "token",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "GaugeSet",
-          inputs: [
-            {
-              name: "gauge",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "PoolManagerFeeSet",
-          inputs: [
-            {
-              name: "poolManagerFeeBips",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "PoolManagerFeesClaimed",
-          inputs: [
-            {
-              name: "amount0",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "amount1",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "PoolManagerSet",
-          inputs: [
-            {
-              name: "poolManager",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "SovereignOracleSet",
-          inputs: [
-            {
-              name: "sovereignOracle",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "Swap",
-          inputs: [
-            {
-              name: "sender",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
             {
               name: "isZeroToOne",
               type: "bool",
               indexed: false,
               internalType: "bool",
             },
-            {
-              name: "amountIn",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "fee",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "amountOut",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "SwapFeeModuleSet",
-          inputs: [
-            {
-              name: "swapFeeModule",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "WithdrawLiquidity",
-          inputs: [
-            {
-              name: "recipient",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "amount0",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "amount1",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
           ],
           anonymous: false,
         },
         {
           type: "error",
-          name: "SovereignPool__ALMAlreadySet",
+          name: "SovereignALM__depositLiquidity_notPermissioned",
           inputs: [],
         },
         {
           type: "error",
-          name: "SovereignPool__ZeroAddress",
+          name: "SovereignALM__depositLiquidity_zeroTotalDepositAmount",
           inputs: [],
         },
         {
           type: "error",
-          name: "SovereignPool___claimPoolManagerFees_invalidFeeReceived",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool___claimPoolManagerFees_invalidProtocolFee",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool___handleTokenInOnSwap_excessiveTokenInErrorOnTransfer",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool___handleTokenInOnSwap_invalidTokenInAmount",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool___verifyPermission_onlyPermissionedAccess",
-          inputs: [
-            {
-              name: "sender",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "accessType",
-              type: "uint8",
-              internalType: "uint8",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_depositDisabled",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_excessiveToken0ErrorOnTransfer",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_excessiveToken1ErrorOnTransfer",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_incorrectTokenAmount",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_insufficientToken0Amount",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_insufficientToken1Amount",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__depositLiquidity_zeroTotalDepositAmount",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__excessiveToken0AbsErrorTolerance",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__excessiveToken1AbsErrorTolerance",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__getReserves_invalidReservesLength",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__onlyALM",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__onlyGauge",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__onlyPoolManager",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__onlyProtocolFactory",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__sameTokenNotAllowed",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__setGauge_gaugeAlreadySet",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__setGauge_invalidAddress",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__setPoolManagerFeeBips_excessivePoolManagerFee",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__setSovereignOracle_oracleDisabled",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__setSovereignOracle_sovereignOracleAlreadySet",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__setSwapFeeModule_timelock",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_excessiveSwapFee",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_expired",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_insufficientAmountIn",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_invalidLiquidityQuote",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_invalidPoolTokenOut",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_invalidRecipient",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_invalidSwapTokenOut",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__swap_zeroAmountInOrOut",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__withdrawLiquidity_insufficientReserve0",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__withdrawLiquidity_insufficientReserve1",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__withdrawLiquidity_invalidRecipient",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SovereignPool__withdrawLiquidity_withdrawDisabled",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ValantisPool__flashLoan_flashLoanDisabled",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ValantisPool__flashLoan_flashLoanNotRepaid",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ValantisPool__flashLoan_rebaseTokenNotAllowed",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ValantisPool__flashloan_callbackFailed",
+          name: "SovereignALM__onlyPool",
           inputs: [],
         },
       ],
       inheritedFunctions: {
-        alm: "lib/valantis-core/src/pools/SovereignPool.sol",
-        claimPoolManagerFees: "lib/valantis-core/src/pools/SovereignPool.sol",
-        claimProtocolFees: "lib/valantis-core/src/pools/SovereignPool.sol",
-        defaultSwapFeeBips: "lib/valantis-core/src/pools/SovereignPool.sol",
-        depositLiquidity: "lib/valantis-core/src/pools/SovereignPool.sol",
-        feePoolManager0: "lib/valantis-core/src/pools/SovereignPool.sol",
-        feePoolManager1: "lib/valantis-core/src/pools/SovereignPool.sol",
-        feeProtocol0: "lib/valantis-core/src/pools/SovereignPool.sol",
-        feeProtocol1: "lib/valantis-core/src/pools/SovereignPool.sol",
-        flashLoan: "lib/valantis-core/src/pools/SovereignPool.sol",
-        gauge: "lib/valantis-core/src/pools/SovereignPool.sol",
-        getPoolManagerFees: "lib/valantis-core/src/pools/SovereignPool.sol",
-        getReserves: "lib/valantis-core/src/pools/SovereignPool.sol",
-        getTokens: "lib/valantis-core/src/pools/SovereignPool.sol",
-        isLocked: "lib/valantis-core/src/pools/SovereignPool.sol",
-        isRebaseTokenPool: "lib/valantis-core/src/pools/SovereignPool.sol",
-        isToken0Rebase: "lib/valantis-core/src/pools/SovereignPool.sol",
-        isToken1Rebase: "lib/valantis-core/src/pools/SovereignPool.sol",
-        poolManager: "lib/valantis-core/src/pools/SovereignPool.sol",
-        poolManagerFeeBips: "lib/valantis-core/src/pools/SovereignPool.sol",
-        protocolFactory: "lib/valantis-core/src/pools/SovereignPool.sol",
-        setALM: "lib/valantis-core/src/pools/SovereignPool.sol",
-        setGauge: "lib/valantis-core/src/pools/SovereignPool.sol",
-        setPoolManager: "lib/valantis-core/src/pools/SovereignPool.sol",
-        setPoolManagerFeeBips: "lib/valantis-core/src/pools/SovereignPool.sol",
-        setSovereignOracle: "lib/valantis-core/src/pools/SovereignPool.sol",
-        setSwapFeeModule: "lib/valantis-core/src/pools/SovereignPool.sol",
-        sovereignOracleModule: "lib/valantis-core/src/pools/SovereignPool.sol",
-        sovereignVault: "lib/valantis-core/src/pools/SovereignPool.sol",
-        swap: "lib/valantis-core/src/pools/SovereignPool.sol",
-        swapFeeModule: "lib/valantis-core/src/pools/SovereignPool.sol",
-        swapFeeModuleUpdateTimestamp: "lib/valantis-core/src/pools/SovereignPool.sol",
-        token0: "lib/valantis-core/src/pools/SovereignPool.sol",
-        token0AbsErrorTolerance: "lib/valantis-core/src/pools/SovereignPool.sol",
-        token1: "lib/valantis-core/src/pools/SovereignPool.sol",
-        token1AbsErrorTolerance: "lib/valantis-core/src/pools/SovereignPool.sol",
-        verifierModule: "lib/valantis-core/src/pools/SovereignPool.sol",
-        withdrawLiquidity: "lib/valantis-core/src/pools/SovereignPool.sol",
+        getLiquidityQuote: "lib/valantis-core/src/ALM/interfaces/ISovereignALM.sol",
+        onDepositLiquidityCallback: "lib/valantis-core/src/ALM/interfaces/ISovereignALM.sol",
+        onSwapCallback: "lib/valantis-core/src/ALM/interfaces/ISovereignALM.sol",
       },
     },
   },
