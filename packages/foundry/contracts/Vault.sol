@@ -17,11 +17,12 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
     error SovereignVault__invalidTokens();
     error SovereignVault__invalidPool();
     error SovereignVault__onlyPoolManager();
-    error SovereignVault__onlyActivePool();
+    error SovereignVault__onlyPoolALM();
     error SovereignVault__insufficientReserves();
     error SovereignVault__invalidPath();
     error SovereignVault__swapExpired();
     error SovereignVault__slippageExceeded();
+    error SovereignVault__inputLengthsMismatch();
 
     struct PoolInfo {
         address[] tokens;
@@ -38,15 +39,14 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
     event PoolDeactivated(address indexed pool);
     event ReservesUpdated(address indexed pool, address indexed token, uint256 amount);
     event PoolManagerFeesClaimed(address indexed pool, uint256 feePoolManager0, uint256 feePoolManager1);
-    event MutliHopSwap(address indexed sender, address[] path, uint256 amountIn, uint256 amountOut);
 
     modifier onlyPoolManager(address _pool) {
         if (msg.sender != pools[_pool].poolManager) revert SovereignVault__onlyPoolManager();
         _;
     }
 
-    modifier onlyActivePool() {
-        if (!pools[msg.sender].isActive) revert SovereignVault__onlyActivePool();
+    modifier onlyPoolALM(address _pool) {
+        if (msg.sender != pools[_pool].alm) revert SovereignVault__onlyPoolALM();
         _;
     }
 
@@ -93,82 +93,34 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         return reserves;
     }
 
-    function updateReserves(address _token, uint256 _amount) external onlyActivePool {
-        poolReserves[msg.sender][_token] = _amount;
-        emit ReservesUpdated(msg.sender, _token, _amount);
+    function updateReserves(address _pool, address[] calldata _tokens, uint256[] calldata _amounts) external onlyPoolALM(_pool) {
+        if (_tokens.length != _amounts.length) revert SovereignVault__inputLengthsMismatch();
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            poolReserves[_pool][_tokens[i]] = _amounts[i];
+            emit ReservesUpdated(_pool, _tokens[i], _amounts[i]);
+        }
     }
 
-    function approveTokens(address _token, uint256 _amount) external onlyActivePool {
-        IERC20(_token).safeApprove(msg.sender, _amount);
-    }
-
-    function deposit(address _token, uint256 _amount) external onlyActivePool {
+    function deposit(address _pool, address _token, uint256 _amount) external onlyPoolALM(_pool) nonReentrant() {
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        poolReserves[msg.sender][_token] += _amount;
-        emit ReservesUpdated(msg.sender, _token, poolReserves[msg.sender][_token]);
+        poolReserves[_pool][_token] += _amount;
+        emit ReservesUpdated(_pool, _token, poolReserves[_pool][_token]);
     }
 
-    function withdraw(address _token, uint256 _amount) external onlyActivePool {
-        if (poolReserves[msg.sender][_token] < _amount) revert SovereignVault__insufficientReserves();
-        poolReserves[msg.sender][_token] -= _amount;
+    function withdraw(address _pool, address _token, uint256 _amount) external onlyPoolALM(_pool) nonReentrant() {
+        if (poolReserves[_pool][_token] < _amount) revert SovereignVault__insufficientReserves();
+        poolReserves[_pool][_token] -= _amount;
         IERC20(_token).safeTransfer(msg.sender, _amount);
-        emit ReservesUpdated(msg.sender, _token, poolReserves[msg.sender][_token]);
+        emit ReservesUpdated(_pool, _token, poolReserves[_pool][_token]);
     }
 
-    function claimPoolManagerFees(uint256 _feePoolManager0, uint256 _feePoolManager1) external override onlyActivePool {
+    function claimPoolManagerFees(uint256 _feePoolManager0, uint256 _feePoolManager1) external override onlyPoolALM(msg.sender) nonReentrant {
         address[] memory poolTokens = pools[msg.sender].tokens;
         if (poolTokens.length < 2) revert SovereignVault__invalidPool();
         
         IERC20(poolTokens[0]).safeTransfer(msg.sender, _feePoolManager0);
         IERC20(poolTokens[1]).safeTransfer(msg.sender, _feePoolManager1);
         emit PoolManagerFeesClaimed(msg.sender, _feePoolManager0, _feePoolManager1);
-    }
-
-    function executeMultiHopSwap(
-        address[] calldata _path,
-        uint256 _amountIn,
-        uint256 _minAmountOut,
-        uint256 deadline
-    ) external nonReentrant {
-        if (block.timestamp > deadline) revert SovereignVault__swapExpired();
-        if (_path.length < 2) revert SovereignVault__invalidPath();
-
-        // Transfers from user to vault, user must have approved this contract first.
-        IERC20(_path[0]).safeTransferFrom(msg.sender, address(this), _amountIn);
-
-        uint256 amountOut = _amountIn;
-        for (uint256 i = 0; i < _path.length - 1; i++) {
-            address pool = _getPoolForTokenPair(_path[i], _path[i + 1]);
-            if (!pools[pool].isActive) revert SovereignVault__invalidPool();
-
-            amountOut = _swapInPool(pool, _path[i], _path[i + 1], amountOut); 
-        }
-
-        if (amountOut < _minAmountOut) revert SovereignVault__slippageExceeded();
-
-        IERC20(_path[_path.length - 1]).safeTransfer(msg.sender, amountOut);
-        emit MutliHopSwap(msg.sender, _path, _amountIn, amountOut);
-    }
-
-    function _swapInPool(address _pool, address _tokenIn, address _tokenOut, uint256 _amountIn) internal returns (uint256) {
-        ALMLiquidityQuoteInput memory quoteInput = ALMLiquidityQuoteInput({
-            isZeroToOne: _tokenIn < _tokenOut,
-            amountInMinusFee: _amountIn,
-            feeInBips: 0, // Fees are handled in the ALM
-            sender: address(this),
-            recipient: address(this),
-            tokenOutSwap: _tokenOut
-        });
-
-        ALMLiquidityQuote memory quote = ISovereignALM(pools[_pool].alm).getLiquidityQuote(quoteInput, "", "");
-
-        poolReserves[_pool][_tokenIn] += quote.amountInFilled;
-        poolReserves[_pool][_tokenOut] -= quote.amountOut;
-
-        emit ReservesUpdated(_pool, _tokenIn, poolReserves[_pool][_tokenIn]);
-        emit ReservesUpdated(_pool, _tokenOut, poolReserves[_pool][_tokenOut]);
-
-        return quote.amountOut;
     }
     
     function _getPoolForTokenPair(address _token0, address _token1) internal view returns (address) {
