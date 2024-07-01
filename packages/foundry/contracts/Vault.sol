@@ -9,6 +9,8 @@ import {ISovereignPool} from "@valantislabs/contracts/pools/interfaces/ISovereig
 import {ISovereignALM} from "@valantislabs/contracts/ALM/interfaces/ISovereignALM.sol";
 import {ALMLiquidityQuoteInput, ALMLiquidityQuote} from "@valantislabs/contracts/ALM/structs/SovereignALMStructs.sol";
 
+
+/// @notice Liquidity stored here is pool specific, this vault does not currently allow for liquidity to be shared between pools
 contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -17,21 +19,28 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
     error SovereignVault__invalidTokens();
     error SovereignVault__invalidPool();
     error SovereignVault__onlyPoolManager();
-    error SovereignVault__onlyPoolALM();
+    error SovereignVault__onlyALM();    
     error SovereignVault__insufficientReserves();
     error SovereignVault__invalidPath();
     error SovereignVault__swapExpired();
     error SovereignVault__slippageExceeded();
     error SovereignVault__inputLengthsMismatch();
 
-    struct PoolInfo {
+    struct PoolData {
         address[] tokens;
         address alm;
         address poolManager;
         bool isActive;
     }
 
-    mapping(address pool => PoolInfo) public pools;
+    struct ALMData {
+        address pool;
+        address[] tokens;
+        bool isActive;
+    }
+
+    mapping(address pool => PoolData) public pools;
+    mapping(address alm => ALMData) public alms;
     mapping(address pool => mapping(address token => uint256 amount)) public poolReserves;
     mapping(address token0 => mapping(address token1 => address pool)) private tokenPairToPool;
 
@@ -45,8 +54,8 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         _;
     }
 
-    modifier onlyPoolALM(address _pool) {
-        if (msg.sender != pools[_pool].alm) revert SovereignVault__onlyPoolALM();
+    modifier onlyALM() {
+        if (!alms[msg.sender].isActive) revert SovereignVault__onlyALM();
         _;
     }
 
@@ -61,10 +70,16 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
             revert SovereignVault__invalidTokens();
         }
 
-        pools[_pool] = PoolInfo({
+        pools[_pool] = PoolData({
             tokens: _tokens,
             alm: _alm,
             poolManager: pool.poolManager(),
+            isActive: true
+        });
+
+        alms[_alm] = ALMData({
+            pool: _pool,
+            tokens: _tokens,
             isActive: true
         });
 
@@ -93,7 +108,7 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         return reserves;
     }
 
-    function updateReserves(address _pool, address[] calldata _tokens, uint256[] calldata _amounts) external onlyPoolALM(_pool) {
+    function updateReserves(address _pool, address[] calldata _tokens, uint256[] calldata _amounts) external onlyALM() {
         if (_tokens.length != _amounts.length) revert SovereignVault__inputLengthsMismatch();
         for (uint256 i = 0; i < _tokens.length; i++) {
             poolReserves[_pool][_tokens[i]] = _amounts[i];
@@ -101,20 +116,20 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         }
     }
 
-    function deposit(address _pool, address _token, uint256 _amount) external onlyPoolALM(_pool) nonReentrant() {
+    function deposit(address _pool, address _token, uint256 _amount) external onlyALM() nonReentrant() {
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
         poolReserves[_pool][_token] += _amount;
         emit ReservesUpdated(_pool, _token, poolReserves[_pool][_token]);
     }
 
-    function withdraw(address _pool, address _token, uint256 _amount) external onlyPoolALM(_pool) nonReentrant() {
+    function withdraw(address _pool, address _token, uint256 _amount) external onlyALM() nonReentrant() {
         if (poolReserves[_pool][_token] < _amount) revert SovereignVault__insufficientReserves();
         poolReserves[_pool][_token] -= _amount;
         IERC20(_token).safeTransfer(msg.sender, _amount);
         emit ReservesUpdated(_pool, _token, poolReserves[_pool][_token]);
     }
 
-    function claimPoolManagerFees(uint256 _feePoolManager0, uint256 _feePoolManager1) external override onlyPoolALM(msg.sender) nonReentrant {
+    function claimPoolManagerFees(uint256 _feePoolManager0, uint256 _feePoolManager1) external override onlyALM() nonReentrant {
         address[] memory poolTokens = pools[msg.sender].tokens;
         if (poolTokens.length < 2) revert SovereignVault__invalidPool();
         
@@ -127,5 +142,12 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         address pool = tokenPairToPool[_token0][_token1];
         if (pool == address(0)) revert SovereignVault__invalidPool();
         return pool;
+    }
+
+    function quoteToRecipient(bool _isZeroToOne, uint256 _amount, address _recipient) external onlyALM {
+        ALMData memory almData = alms[msg.sender];
+        address tokenOut = _isZeroToOne ? almData.tokens[1] : almData.tokens[0];
+
+        IERC20(tokenOut).safeApprove(almData.pool, _amount);
     }
 }
