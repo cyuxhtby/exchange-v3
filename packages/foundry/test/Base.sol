@@ -21,6 +21,9 @@ contract Base is Test {
     address public constant USER1 = address(2);
     address public constant USER2 = address(3);
 
+    uint256 public constant INITIAL_BALANCE = 2000e18;
+    uint256 public constant INITIAL_LIQUIDITY = 1000e18;
+
     function setUp() public virtual {
         token0 = new MockToken("Token0", "TKN0");
         token1 = new MockToken("Token1", "TKN1");
@@ -58,10 +61,10 @@ contract Base is Test {
         almRegistry.registerALM(address(token0), address(token1), address(alm));
 
         // Mint test tokens
-        token0.mint(USER1, 1000e18);
-        token1.mint(USER1, 1000e18);
-        token0.mint(USER2, 1000e18);
-        token1.mint(USER2, 1000e18);
+        token0.mint(USER1, INITIAL_BALANCE);
+        token1.mint(USER1, INITIAL_BALANCE);
+        token0.mint(USER2, INITIAL_BALANCE);
+        token1.mint(USER2, INITIAL_BALANCE);
     }
 
     function mintAndApprove(address user, MockToken token, uint256 amount) internal {
@@ -70,4 +73,15 @@ contract Base is Test {
         token.approve(address(pool), amount);
     }
 
+    function addInitialLiquidity() internal {
+        vm.startPrank(USER1);
+        token0.approve(address(alm), INITIAL_LIQUIDITY);
+        token1.approve(address(alm), INITIAL_LIQUIDITY);
+        alm.depositLiquidity(INITIAL_LIQUIDITY, INITIAL_LIQUIDITY, "");
+        vm.stopPrank();
+    }
+
+    function calculateExpectedOutput(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) internal pure returns (uint256) {
+        return (reserveOut * amountIn) / (reserveIn + amountIn);
+    }
 }

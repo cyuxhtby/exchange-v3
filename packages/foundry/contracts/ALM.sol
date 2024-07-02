@@ -23,6 +23,9 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
     error SovereignALM__withdrawLiquidity_invalidRecipient();
     error SovereignALM__withdrawLiquidity_insufficientReserves();
     error SovereignALM__findNextALM_noALMFound();
+    error SovereignALM__depositLiquidity_invalidRatio();
+    error SovereignALM__depositLiquidity_bothAmountsMustBeNonZero();
+    error SovereignALM__withdrawLiquidity_invalidRatio();   
 
     event LiquidityDeposited(
         address indexed user, uint256 amount0, uint256 amount1
@@ -68,6 +71,22 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
         }
 
         (address token0, address token1) = getPoolTokens();
+        address[] memory tokens = new address[](2);
+        tokens[0] = token0;
+        tokens[1] = token1;
+        uint256[] memory currentReserves = ISovereignVault(vault).getReservesForPool(pool, tokens);
+
+        // Enforce deposit ratio
+        if (currentReserves[0] > 0 && currentReserves[1] > 0) {
+            if (_amount0 * currentReserves[1] != _amount1 * currentReserves[0]) {
+                revert SovereignALM__depositLiquidity_invalidRatio();
+            }
+        } else {
+            // First deposit
+            if (_amount0 == 0 || _amount1 == 0) {
+                revert SovereignALM__depositLiquidity_bothAmountsMustBeNonZero();
+            }
+        }
 
         if (_amount0 > 0) {
             IERC20(token0).safeTransferFrom(msg.sender, vault, _amount0);
@@ -76,11 +95,7 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
             IERC20(token1).safeTransferFrom(msg.sender, vault, _amount1);
         }
 
-        address[] memory tokens = new address[](2);
-        tokens[0] = token0;
-        tokens[1] = token1;
-        uint256[] memory newReserves = 
-            ISovereignVault(vault).getReservesForPool(pool, tokens);
+        uint256[] memory newReserves = ISovereignVault(vault).getReservesForPool(pool, tokens);
         newReserves[0] += _amount0;
         newReserves[1] += _amount1;
         ISovereignVault(vault).updateReserves(pool, tokens, newReserves);
@@ -110,11 +125,14 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
         tokens[0] = token0;
         tokens[1] = token1;
 
-        uint256[] memory currentReserves =
-            ISovereignVault(vault).getReservesForPool(pool, tokens);
+        uint256[] memory currentReserves = ISovereignVault(vault).getReservesForPool(pool, tokens);
 
         if (currentReserves[0] < _amount0 || currentReserves[1] < _amount1) {
             revert SovereignALM__withdrawLiquidity_insufficientReserves();
+        }
+
+        if (_amount0 * currentReserves[1] != _amount1 * currentReserves[0]) {
+            revert SovereignALM__withdrawLiquidity_invalidRatio();
         }
 
         uint256[] memory newReserves = new uint256[](2);
@@ -215,14 +233,12 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
             fee1 += fee;
         }
 
-        ISovereignVault(vault).quoteToRecipient(
-            _almLiquidityQuoteInput.isZeroToOne,
-            amountOut,
-            _almLiquidityQuoteInput.recipient
-        );
+        address tokenOut = _almLiquidityQuoteInput.isZeroToOne ? token1 : token0; 
+
+        ISovereignVault(vault).approvePoolAllowance(tokenOut, amountOut);
 
         return ALMLiquidityQuote(
-            false, amountOut, _almLiquidityQuoteInput.amountInMinusFee
+            true, amountOut, _almLiquidityQuoteInput.amountInMinusFee
         );
     }
 

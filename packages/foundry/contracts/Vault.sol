@@ -144,10 +144,8 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         return pool;
     }
 
-    function quoteToRecipient(bool _isZeroToOne, uint256 _amount, address _recipient) external onlyALM {
+    function approvePoolAllowance(address _tokenOut, uint256 _amount) external onlyALM {
         ALMData memory almData = alms[msg.sender];
-        address tokenOut = _isZeroToOne ? almData.tokens[1] : almData.tokens[0];
-
-        IERC20(tokenOut).safeApprove(almData.pool, _amount);
+        IERC20(_tokenOut).safeApprove(almData.pool, _amount);
     }
 }
