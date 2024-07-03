@@ -12,6 +12,8 @@ import {ISovereignPool} from "@valantislabs/contracts/pools/interfaces/ISovereig
 import {ISovereignPoolSwapCallback} from "@valantislabs/contracts/pools/interfaces/ISovereignPoolSwapCallback.sol";
 import {ALMRegistry} from "./ALMRegistry.sol";
 
+import {console} from "forge-std/Test.sol";
+
 contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
     using SafeERC20 for IERC20;
 
@@ -37,6 +39,13 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
         uint256 amount1
     );
     event SwapCallback(bool isZeroToOne, uint256 amountIn, uint256 amountOut);
+
+    struct SwapPath {
+        address[] path;
+        uint256[] amounts;
+    }
+
+    mapping(address => SwapPath) private swapPaths;
 
     address public immutable pool;
     address public immutable vault;
@@ -76,13 +85,12 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
         tokens[1] = token1;
         uint256[] memory currentReserves = ISovereignVault(vault).getReservesForPool(pool, tokens);
 
-        // Enforce deposit ratio
+        // Enforce deposit ratio for non zero reserves
         if (currentReserves[0] > 0 && currentReserves[1] > 0) {
             if (_amount0 * currentReserves[1] != _amount1 * currentReserves[0]) {
                 revert SovereignALM__depositLiquidity_invalidRatio();
             }
         } else {
-            // First deposit
             if (_amount0 == 0 || _amount1 == 0) {
                 revert SovereignALM__depositLiquidity_bothAmountsMustBeNonZero();
             }
@@ -163,11 +171,19 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
 
         (address token0, address token1) = getPoolTokens();
 
+        // Ensure allowance before any operations
+        ensureAllowance(token0, quote.amountOut);
+        ensureAllowance(token1, quote.amountOut);
+
+        SwapPath storage swapPath = swapPaths[msg.sender];
+        swapPath.path.push(_almLiquidityQuoteInput.isZeroToOne ? token0 : token1);
+        swapPath.amounts.push(quote.amountInFilled);
+
         // If the tokenOutSwap is not part of the current pool's tokens, 
         // recursively get the liquidity quote of the next ALM.
         if (
-            _almLiquidityQuoteInput.tokenOutSwap != address(token0)
-                && _almLiquidityQuoteInput.tokenOutSwap != address(token1)
+            _almLiquidityQuoteInput.tokenOutSwap != address(token0)  &&
+            _almLiquidityQuoteInput.tokenOutSwap != address(token1)
         ) {
             ISovereignALM nextALM = ISovereignALM(
                 _findNextALM(_almLiquidityQuoteInput.tokenOutSwap)
@@ -185,17 +201,20 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
                 tokenOutSwap: _almLiquidityQuoteInput.tokenOutSwap
             });
 
-            ALMLiquidityQuote memory nextQuote = 
-                nextALM.getLiquidityQuote(nextLiquidityQuoteInput, "", "");
+            ALMLiquidityQuote memory nextQuote = nextALM.getLiquidityQuote(nextLiquidityQuoteInput, "", "");
+
+            swapPath.path.push(_almLiquidityQuoteInput.tokenOutSwap);
+            swapPath.amounts.push(nextQuote.amountOut);
 
             // Returns the final output amount and the initial input amount, 
-            // although loses information about intermediate hops.
             return ALMLiquidityQuote({
                 isCallbackOnSwap: true,
                 amountOut: nextQuote.amountOut,
                 amountInFilled: quote.amountInFilled
             });
         } else {
+            swapPath.path.push(_almLiquidityQuoteInput.tokenOutSwap);
+            swapPath.amounts.push(quote.amountInFilled);
             return quote;
         }
     }
@@ -235,7 +254,8 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
 
         address tokenOut = _almLiquidityQuoteInput.isZeroToOne ? token1 : token0; 
 
-        ISovereignVault(vault).approvePoolAllowance(tokenOut, amountOut);
+        // YUH
+        ISovereignVault(vault).approvePoolForSwap(tokenOut, amountOut);
 
         return ALMLiquidityQuote(
             true, amountOut, _almLiquidityQuoteInput.amountInMinusFee
@@ -243,12 +263,43 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
     }
 
     function _findNextALM(address _tokenOut) internal view returns (address) {
-        (, address token1) = getPoolTokens();
-        address nextALM = ALMRegistry(registry).getALM(address(token1), _tokenOut);
-        if (nextALM == address(0)) {
-            revert SovereignALM__findNextALM_noALMFound();
+        (address token0, address token1) = getPoolTokens();
+        address nextALM;
+
+        // Check for direct connections first
+        nextALM = ALMRegistry(registry).getALM(token1, _tokenOut);
+        if (nextALM != address(0)) {
+            console.log("Direct connection found from token1 to tokenOut");
+            return nextALM;
         }
-        return nextALM;
+
+        nextALM = ALMRegistry(registry).getALM(token0, _tokenOut);
+        if (nextALM != address(0)) {
+            console.log("Direct connection found from token0 to tokenOut");
+            return nextALM;
+        }
+
+        // If no direct connection, check connected tokens
+        address[] memory connectedToToken1 = ALMRegistry(registry).getConnectedTokens(token1);
+        for (uint i = 0; i < connectedToToken1.length; i++) {
+            nextALM = ALMRegistry(registry).getALM(token1, connectedToToken1[i]);
+            if (nextALM != address(0)) {
+                console.log("Intermediate connection found from token1 to", connectedToToken1[i]);
+                return nextALM;
+            }
+        }
+
+        address[] memory connectedToToken0 = ALMRegistry(registry).getConnectedTokens(token0);
+        for (uint i = 0; i < connectedToToken0.length; i++) {
+            nextALM = ALMRegistry(registry).getALM(token0, connectedToToken0[i]);
+            if (nextALM != address(0)) {
+                console.log("Intermediate connection found from token0 to", connectedToToken0[i]);
+                return nextALM;
+            }
+        }
+
+        console.log("No connection found for tokens:", token0, token1, _tokenOut);
+        revert SovereignALM__findNextALM_noALMFound();
     }
 
     function onSwapCallback(
@@ -256,26 +307,56 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
         uint256 _amountIn,
         uint256 _amountOut
     ) external override onlyPool {
-        (address token0, address token1) = getPoolTokens();
-        address[] memory tokens = new address[](2);
-        tokens[0] = token0;
-        tokens[1] = token1;
-
-        uint256[] memory newReserves = new uint256[](2);
-        uint256[] memory oldReserves = ISovereignVault(vault).getReservesForPool(pool, tokens);
-
-        if (_isZeroToOne) {
-            newReserves[0] = oldReserves[0] + _amountIn;
-            newReserves[1] = oldReserves[1] - _amountOut;
+        SwapPath storage swapPath = swapPaths[msg.sender];
+        
+        if (swapPath.path.length > 2) {
+            _handleMultiHopSwap(swapPath, _amountOut);
         } else {
-            newReserves[0] = oldReserves[0] - _amountOut;
-            newReserves[1] = oldReserves[1] + _amountIn;
+            _handleSingleHopSwap(_isZeroToOne, _amountIn, _amountOut);
         }
 
-        ISovereignVault(vault).updateReserves(pool, tokens, newReserves);
-
-        emit SwapCallback(_isZeroToOne, _amountIn, _amountOut);
+        delete swapPaths[msg.sender];
     }
+
+function _handleMultiHopSwap(SwapPath storage pathInfo, uint256 finalAmountOut) internal {
+    for (uint i = 0; i < pathInfo.path.length - 1; i++) {
+        address poolAddress = ALMRegistry(registry).getPoolForTokenPair(pathInfo.path[i], pathInfo.path[i+1]);
+        address[] memory tokens = new address[](2);
+        tokens[0] = pathInfo.path[i];
+        tokens[1] = pathInfo.path[i+1];
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = pathInfo.amounts[i];
+        amounts[1] = pathInfo.amounts[i+1];
+        ISovereignVault(vault).updateReserves(poolAddress, tokens, amounts);
+    }
+
+    // Final transfer from the vault to the user
+    address finalTokenOut = pathInfo.path[pathInfo.path.length - 1];
+    ISovereignVault(vault).withdraw(pool, finalTokenOut, finalAmountOut);
+    IERC20(finalTokenOut).safeTransfer(msg.sender, finalAmountOut);
+}
+
+function _handleSingleHopSwap(bool _isZeroToOne, uint256 _amountIn, uint256 _amountOut) internal {
+    (address token0, address token1) = getPoolTokens();
+    address[] memory tokens = new address[](2);
+    tokens[0] = token0;
+    tokens[1] = token1;
+
+    uint256[] memory newReserves = new uint256[](2);
+    uint256[] memory oldReserves = ISovereignVault(vault).getReservesForPool(pool, tokens);
+
+    if (_isZeroToOne) {
+        newReserves[0] = oldReserves[0] + _amountIn;
+        newReserves[1] = oldReserves[1] - _amountOut;
+    } else {
+        newReserves[0] = oldReserves[0] - _amountOut;
+        newReserves[1] = oldReserves[1] + _amountIn;
+    }
+
+    ISovereignVault(vault).updateReserves(pool, tokens, newReserves);
+
+    emit SwapCallback(_isZeroToOne, _amountIn, _amountOut);
+}
 
     function onDepositLiquidityCallback(
         uint256 _amount0,
@@ -296,4 +377,13 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
     {
         (token0, token1) = (ISovereignPool(pool).token0(), ISovereignPool(pool).token1());
     }
+        
+    function ensureAllowance(address _tokenOut, uint256 _amount) internal {
+        uint256 currentAllowance = IERC20(_tokenOut).allowance(address(this), vault);
+        if (currentAllowance < _amount) {
+            ISovereignVault(vault).approvePoolAllowance(_tokenOut, _amount);
+        }
+    }
+
+
 }

@@ -8,6 +8,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {ISovereignPool} from "@valantislabs/contracts/pools/interfaces/ISovereignPool.sol";
 import {ISovereignALM} from "@valantislabs/contracts/ALM/interfaces/ISovereignALM.sol";
 import {ALMLiquidityQuoteInput, ALMLiquidityQuote} from "@valantislabs/contracts/ALM/structs/SovereignALMStructs.sol";
+import {console} from "forge-std/Test.sol";
 
 
 /// @notice Liquidity stored here is pool specific, this vault does not currently allow for liquidity to be shared between pools
@@ -54,10 +55,12 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         _;
     }
 
+    // consider renaming this to onlyValidALM()
     modifier onlyALM() {
         if (!alms[msg.sender].isActive) revert SovereignVault__onlyALM();
         _;
     }
+
 
     function registerPool(address _pool, address[] memory _tokens, address _alm) external {
         if (pools[_pool].isActive) revert SovereignVault__poolAlreadyAdded();
@@ -85,6 +88,12 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
 
         tokenPairToPool[_tokens[0]][_tokens[1]] = _pool;
         tokenPairToPool[_tokens[1]][_tokens[0]] = _pool;
+
+        // Approve maximum allowance for both tokens
+        /// @notice Not ideal !
+        IERC20(_tokens[0]).approve(_pool, type(uint256).max);
+        IERC20(_tokens[1]).approve(_pool, type(uint256).max);
+
         emit PoolRegistered(_pool, _tokens, _alm, pool.poolManager());
     }
 
@@ -146,6 +155,26 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
 
     function approvePoolAllowance(address _tokenOut, uint256 _amount) external onlyALM {
         ALMData memory almData = alms[msg.sender];
+
+        uint256 currentAllowance = IERC20(_tokenOut).allowance(address(this), almData.pool);
+        if (currentAllowance > 0) {
+            IERC20(_tokenOut).safeApprove(almData.pool, 0);
+        }
+
         IERC20(_tokenOut).safeApprove(almData.pool, _amount);
     }
+
+    function approvePool(address _pool, address _token, uint256 _amount) external {
+        require(pools[_pool].isActive, "Pool not active");
+        require(msg.sender == pools[_pool].alm, "Only ALM can approve");
+        IERC20(_token).approve(_pool, type(uint256).max);
+        IERC20(_token).approve(_pool, type(uint256).max); 
+    }
+
+function approvePoolForSwap(address _token, uint256 _amount) external {
+    require(pools[msg.sender].isActive || alms[msg.sender].isActive, "Only active pools or ALMs can call this function");
+    console.log("Approving pool for swap. Token:", _token, "Amount:", _amount);
+    console.log("Caller:", msg.sender);
+    IERC20(_token).approve(alms[msg.sender].pool, _amount);
+}
 }
