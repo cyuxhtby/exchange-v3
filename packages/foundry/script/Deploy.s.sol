@@ -6,6 +6,7 @@ import "../contracts/ALM.sol";
 import "../contracts/Vault.sol";
 import "../contracts/Pool.sol";
 import "../contracts/PoolFactory.sol";
+import "../contracts/ALMRegistry.sol";
 import "./DeployHelpers.s.sol";
 
 contract Deploy is ScaffoldETHDeploy {
@@ -14,6 +15,7 @@ contract Deploy is ScaffoldETHDeploy {
     MockTokens public mockTokens;
     PoolFactory public poolFactory;
     Vault public vault;
+    ALMRegistry public registry;
 
     struct PoolInfo {
         address pool;
@@ -60,6 +62,9 @@ contract Deploy is ScaffoldETHDeploy {
         deployPoolAndALM("DAI", "USDC");
         deployPoolAndALM("WETH", "USDC");
         deployPoolAndALM("WBTC", "USDT");
+
+        registry = new ALMRegistry();
+        console.log("ALMRegistry deployed at: ", address(registry));
     }
 
     function deployPoolAndALM(string memory token0Symbol, string memory token1Symbol) internal {
@@ -84,7 +89,7 @@ contract Deploy is ScaffoldETHDeploy {
         address pool = poolFactory.deploy(bytes32(0), constructorArgs);
         console.log(string.concat(token0Symbol, "-", token1Symbol, " Pool deployed at: "), pool);
 
-        ALM alm = new ALM(pool, address(vault));
+        ALM alm = new ALM(pool, address(vault), address(registry));
         console.log(string.concat(token0Symbol, "-", token1Symbol, " ALM deployed at: "), address(alm));
 
         deployedPools.push(PoolInfo(pool, address(alm)));
