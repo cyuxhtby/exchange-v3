@@ -171,10 +171,9 @@ contract Vault is ISovereignVaultMinimal, ReentrancyGuard {
         IERC20(_token).approve(_pool, type(uint256).max); 
     }
 
-function approvePoolForSwap(address _token, uint256 _amount) external {
-    require(pools[msg.sender].isActive || alms[msg.sender].isActive, "Only active pools or ALMs can call this function");
-    console.log("Approving pool for swap. Token:", _token, "Amount:", _amount);
-    console.log("Caller:", msg.sender);
-    IERC20(_token).approve(alms[msg.sender].pool, _amount);
-}
+    function approvePoolForSwap(address _token, uint256 _amount) external {
+        require(pools[msg.sender].isActive || alms[msg.sender].isActive, "Only active pools or ALMs can call this function");
+        address poolToApprove = pools[msg.sender].isActive ? msg.sender : alms[msg.sender].pool;
+        IERC20(_token).approve(poolToApprove, type(uint256).max);
+    }
 }

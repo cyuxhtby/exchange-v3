@@ -252,10 +252,9 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
             fee1 += fee;
         }
 
-        address tokenOut = _almLiquidityQuoteInput.isZeroToOne ? token1 : token0; 
+        address tokenOut = _almLiquidityQuoteInput.tokenOutSwap;  // fix
 
-        // YUH
-        ISovereignVault(vault).approvePoolForSwap(tokenOut, amountOut);
+        ISovereignVault(vault).approvePoolForSwap(tokenOut, _almLiquidityQuoteInput.amountInMinusFee);
 
         return ALMLiquidityQuote(
             true, amountOut, _almLiquidityQuoteInput.amountInMinusFee
@@ -318,23 +317,26 @@ contract ALM is ISovereignALM, ISovereignPoolSwapCallback {
         delete swapPaths[msg.sender];
     }
 
-function _handleMultiHopSwap(SwapPath storage pathInfo, uint256 finalAmountOut) internal {
-    for (uint i = 0; i < pathInfo.path.length - 1; i++) {
-        address poolAddress = ALMRegistry(registry).getPoolForTokenPair(pathInfo.path[i], pathInfo.path[i+1]);
-        address[] memory tokens = new address[](2);
-        tokens[0] = pathInfo.path[i];
-        tokens[1] = pathInfo.path[i+1];
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = pathInfo.amounts[i];
-        amounts[1] = pathInfo.amounts[i+1];
-        ISovereignVault(vault).updateReserves(poolAddress, tokens, amounts);
+    function _handleMultiHopSwap(SwapPath storage pathInfo, uint256 finalAmountOut) internal {
+        for (uint i = 0; i < pathInfo.path.length - 1; i++) {
+            address poolAddress = ALMRegistry(registry).getPoolForTokenPair(pathInfo.path[i], pathInfo.path[i+1]);
+            address[] memory tokens = new address[](2);
+            tokens[0] = pathInfo.path[i];
+            tokens[1] = pathInfo.path[i+1];
+            uint256[] memory amounts = new uint256[](2);
+            amounts[0] = pathInfo.amounts[i];
+            amounts[1] = pathInfo.amounts[i+1];
+            ISovereignVault(vault).updateReserves(poolAddress, tokens, amounts);
+            
+            ISovereignVault(vault).approvePoolForSwap(pathInfo.path[i+1], pathInfo.amounts[i+1]);
+            uint256 allowance = IERC20(pathInfo.path[i+1]).allowance(vault, pool);
+            require(allowance >= pathInfo.amounts[i+1], "Insufficient allowance set");
+        }
+        
+        // Approve the final token
+        address finalTokenOut = pathInfo.path[pathInfo.path.length - 1];
+        ISovereignVault(vault).approvePoolForSwap(finalTokenOut, finalAmountOut);
     }
-
-    // Final transfer from the vault to the user
-    address finalTokenOut = pathInfo.path[pathInfo.path.length - 1];
-    ISovereignVault(vault).withdraw(pool, finalTokenOut, finalAmountOut);
-    IERC20(finalTokenOut).safeTransfer(msg.sender, finalAmountOut);
-}
 
 function _handleSingleHopSwap(bool _isZeroToOne, uint256 _amountIn, uint256 _amountOut) internal {
     (address token0, address token1) = getPoolTokens();
